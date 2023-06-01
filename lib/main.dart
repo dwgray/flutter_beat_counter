@@ -1,7 +1,34 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import 'dart:developer';
 
 void main() {
-  runApp(const MyApp());
+  runApp(ChangeNotifierProvider(
+      create: (context) => AppState(), child: const MyApp()));
+}
+
+class AppState with ChangeNotifier {
+  int value = 0;
+  Meter _meter = Meter.common;
+  CountMethod _method = CountMethod.measure;
+
+  Meter get meter => _meter;
+  set meter(Meter value) {
+    _meter = value;
+    notifyListeners();
+  }
+
+  CountMethod get method => _method;
+  set method(CountMethod value) {
+    _method = value;
+    notifyListeners();
+  }
+
+  void increment() {
+    log('In increment: $value');
+    value += 1;
+    notifyListeners();
+  }
 }
 
 class MyApp extends StatelessWidget {
@@ -28,7 +55,7 @@ class MyApp extends StatelessWidget {
         //
         // This works for code too, not just values: Most code changes can be
         // tested with just a hot reload.
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
+        colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepOrange),
         useMaterial3: true,
       ),
       home: const MyHomePage(title: 'Beat Counter'),
@@ -36,7 +63,7 @@ class MyApp extends StatelessWidget {
   }
 }
 
-class MyHomePage extends StatefulWidget {
+class MyHomePage extends StatelessWidget {
   const MyHomePage({super.key, required this.title});
 
   // This widget is the home page of your application. It is stateful, meaning
@@ -51,27 +78,8 @@ class MyHomePage extends StatefulWidget {
   final String title;
 
   @override
-  State<MyHomePage> createState() => _MyHomePageState();
-}
-
-class _MyHomePageState extends State<MyHomePage> {
-  int _counter = 0;
-
-  void _incrementCounter() {
-    setState(() {
-      // This call to setState tells the Flutter framework that something has
-      // changed in this State, which causes it to rerun the build method below
-      // so that the display can reflect the updated values. If we changed
-      // _counter without calling setState(), then the build method would not be
-      // called again, and so nothing would appear to happen.
-      _counter++;
-    });
-  }
-
-  @override
   Widget build(BuildContext context) {
-    // This method is rerun every time setState is called, for instance as done
-    // by the _incrementCounter method above.
+    // This method is rerun every time setState is called
     //
     // The Flutter framework has been optimized to make rerunning build methods
     // fast, so that you can just rebuild anything that needs updating rather
@@ -84,7 +92,7 @@ class _MyHomePageState extends State<MyHomePage> {
         backgroundColor: Theme.of(context).colorScheme.inversePrimary,
         // Here we take the value from the MyHomePage object that was created by
         // the App.build method, and use it to set our appbar title.
-        title: Center(child: Text(widget.title)),
+        title: Center(child: Text(title)),
       ),
       body: Center(
         // Center is a layout widget. It takes a single child and positions it
@@ -115,23 +123,32 @@ class _MyHomePageState extends State<MyHomePage> {
             ]),
             const Spacer(flex: 1),
             ElevatedButton(
-              onPressed: _incrementCounter,
+              onPressed: () {
+                var state = context.read<AppState>();
+                log('Pressing embedded action');
+                state.increment();
+              },
               child: const Text('Click Here'),
             ),
             const Spacer(flex: 1),
             const Text(
               'You have pushed the button this many times:',
             ),
-            Text(
-              '$_counter',
-              style: Theme.of(context).textTheme.headlineMedium,
-            ),
+            Consumer<AppState>(
+                builder: (context, state, child) => Text(
+                      '${state.value} - ${state.meter} - ${state.method}',
+                      style: Theme.of(context).textTheme.headlineMedium,
+                    )),
             const Spacer(flex: 1),
           ],
         ),
       ),
       floatingActionButton: FloatingActionButton(
-        onPressed: _incrementCounter,
+        onPressed: () {
+          var state = context.read<AppState>();
+          log('Pressing floating action');
+          state.increment();
+        },
         tooltip: 'Increment',
         child: const Icon(Icons.add),
       ), // This trailing comma makes auto-formatting nicer for build methods.
@@ -141,62 +158,50 @@ class _MyHomePageState extends State<MyHomePage> {
 
 enum Meter { beat, double, waltz, common }
 
-class MeterChooser extends StatefulWidget {
+class MeterChooser extends StatelessWidget {
   const MeterChooser({super.key});
 
   @override
-  State<MeterChooser> createState() => _MeterChooserState();
-}
-
-class _MeterChooserState extends State<MeterChooser> {
-  Meter meterView = Meter.common;
-
-  @override
   Widget build(BuildContext context) {
-    return SegmentedButton<Meter>(
-      segments: const <ButtonSegment<Meter>>[
-        ButtonSegment<Meter>(value: Meter.beat, label: Text('beat')),
-        ButtonSegment<Meter>(value: Meter.double, label: Text('2/4')),
-        ButtonSegment<Meter>(value: Meter.waltz, label: Text('3/4')),
-        ButtonSegment<Meter>(value: Meter.common, label: Text('4/4')),
-      ],
-      selected: <Meter>{meterView},
-      onSelectionChanged: (Set<Meter> newSelection) {
-        setState(() {
-          meterView = newSelection.first;
-        });
-      },
-    );
+    return Consumer<AppState>(
+        builder: (context, state, child) => SegmentedButton<Meter>(
+                segments: const <ButtonSegment<Meter>>[
+                  ButtonSegment<Meter>(value: Meter.beat, label: Text('beat')),
+                  ButtonSegment<Meter>(value: Meter.double, label: Text('2/4')),
+                  ButtonSegment<Meter>(value: Meter.waltz, label: Text('3/4')),
+                  ButtonSegment<Meter>(value: Meter.common, label: Text('4/4')),
+                ],
+                selected: <Meter>{
+                  state.meter
+                },
+                onSelectionChanged: (Set<Meter> newSelection) {
+                  var state = context.read<AppState>();
+                  state.meter = newSelection.first;
+                }));
   }
 }
 
 enum CountMethod { beat, measure }
 
-class MethodChooser extends StatefulWidget {
+class MethodChooser extends StatelessWidget {
   const MethodChooser({super.key});
 
   @override
-  State<MethodChooser> createState() => _MethodChooserState();
-}
-
-class _MethodChooserState extends State<MethodChooser> {
-  CountMethod methodView = CountMethod.measure;
-
-  @override
   Widget build(BuildContext context) {
-    return SegmentedButton<CountMethod>(
-      segments: const <ButtonSegment<CountMethod>>[
-        ButtonSegment<CountMethod>(
-            value: CountMethod.beat, label: Text('beat')),
-        ButtonSegment<CountMethod>(
-            value: CountMethod.measure, label: Text('measure')),
-      ],
-      selected: <CountMethod>{methodView},
-      onSelectionChanged: (Set<CountMethod> newSelection) {
-        setState(() {
-          methodView = newSelection.first;
-        });
-      },
-    );
+    return Consumer<AppState>(
+        builder: (context, state, child) => SegmentedButton<CountMethod>(
+                segments: const <ButtonSegment<CountMethod>>[
+                  ButtonSegment<CountMethod>(
+                      value: CountMethod.beat, label: Text('beat')),
+                  ButtonSegment<CountMethod>(
+                      value: CountMethod.measure, label: Text('measure')),
+                ],
+                selected: <CountMethod>{
+                  state.method
+                },
+                onSelectionChanged: (Set<CountMethod> newSelection) {
+                  var state = context.read<AppState>();
+                  state.method = newSelection.first;
+                }));
   }
 }
