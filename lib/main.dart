@@ -11,7 +11,7 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Flutter Demo',
+      title: 'Beat Counter',
       theme: ThemeData(
         // This is the theme of your application.
         //
@@ -31,7 +31,7 @@ class MyApp extends StatelessWidget {
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
         useMaterial3: true,
       ),
-      home: const MyHomePage(title: 'Flutter Demo Home Page'),
+      home: const MyHomePage(title: 'Beat Counter'),
     );
   }
 }
@@ -84,7 +84,7 @@ class _MyHomePageState extends State<MyHomePage> {
         backgroundColor: Theme.of(context).colorScheme.inversePrimary,
         // Here we take the value from the MyHomePage object that was created by
         // the App.build method, and use it to set our appbar title.
-        title: Text(widget.title),
+        title: Center(child: Text(widget.title)),
       ),
       body: Center(
         // Center is a layout widget. It takes a single child and positions it
@@ -105,6 +105,20 @@ class _MyHomePageState extends State<MyHomePage> {
           // wireframe for each widget.
           mainAxisAlignment: MainAxisAlignment.center,
           children: <Widget>[
+            const Spacer(flex: 1),
+            const Row(children: <Widget>[
+              Spacer(flex: 20),
+              MeterChooser(),
+              Spacer(flex: 20),
+              MethodChooser(),
+              Spacer(flex: 20)
+            ]),
+            const Spacer(flex: 1),
+            ElevatedButton(
+              onPressed: _incrementCounter,
+              child: const Text('Click Here'),
+            ),
+            const Spacer(flex: 1),
             const Text(
               'You have pushed the button this many times:',
             ),
@@ -112,6 +126,7 @@ class _MyHomePageState extends State<MyHomePage> {
               '$_counter',
               style: Theme.of(context).textTheme.headlineMedium,
             ),
+            const Spacer(flex: 1),
           ],
         ),
       ),
@@ -120,6 +135,68 @@ class _MyHomePageState extends State<MyHomePage> {
         tooltip: 'Increment',
         child: const Icon(Icons.add),
       ), // This trailing comma makes auto-formatting nicer for build methods.
+    );
+  }
+}
+
+enum Meter { beat, double, waltz, common }
+
+class MeterChooser extends StatefulWidget {
+  const MeterChooser({super.key});
+
+  @override
+  State<MeterChooser> createState() => _MeterChooserState();
+}
+
+class _MeterChooserState extends State<MeterChooser> {
+  Meter meterView = Meter.common;
+
+  @override
+  Widget build(BuildContext context) {
+    return SegmentedButton<Meter>(
+      segments: const <ButtonSegment<Meter>>[
+        ButtonSegment<Meter>(value: Meter.beat, label: Text('beat')),
+        ButtonSegment<Meter>(value: Meter.double, label: Text('2/4')),
+        ButtonSegment<Meter>(value: Meter.waltz, label: Text('3/4')),
+        ButtonSegment<Meter>(value: Meter.common, label: Text('4/4')),
+      ],
+      selected: <Meter>{meterView},
+      onSelectionChanged: (Set<Meter> newSelection) {
+        setState(() {
+          meterView = newSelection.first;
+        });
+      },
+    );
+  }
+}
+
+enum CountMethod { beat, measure }
+
+class MethodChooser extends StatefulWidget {
+  const MethodChooser({super.key});
+
+  @override
+  State<MethodChooser> createState() => _MethodChooserState();
+}
+
+class _MethodChooserState extends State<MethodChooser> {
+  CountMethod methodView = CountMethod.measure;
+
+  @override
+  Widget build(BuildContext context) {
+    return SegmentedButton<CountMethod>(
+      segments: const <ButtonSegment<CountMethod>>[
+        ButtonSegment<CountMethod>(
+            value: CountMethod.beat, label: Text('beat')),
+        ButtonSegment<CountMethod>(
+            value: CountMethod.measure, label: Text('measure')),
+      ],
+      selected: <CountMethod>{methodView},
+      onSelectionChanged: (Set<CountMethod> newSelection) {
+        setState(() {
+          methodView = newSelection.first;
+        });
+      },
     );
   }
 }
