@@ -1,16 +1,25 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'dart:developer';
 
 void main() {
   runApp(ChangeNotifierProvider(
-      create: (context) => AppState(), child: const MyApp()));
+      create: (context) => Counter(), child: const MyApp()));
 }
 
-class AppState with ChangeNotifier {
-  int value = 0;
+enum ClickState { initial, firstClick, counting, done }
+
+class Counter with ChangeNotifier {
+  static const int _maxWait = 5000;
+
+  int _lastClick = 0;
   Meter _meter = Meter.common;
   CountMethod _method = CountMethod.measure;
+  ClickState _clickState = ClickState.initial;
+  final List<int> _intervals = [];
+  Timer? _timeout;
 
   Meter get meter => _meter;
   set meter(Meter value) {
@@ -24,10 +33,90 @@ class AppState with ChangeNotifier {
     notifyListeners();
   }
 
-  void increment() {
-    log('In increment: $value');
-    value += 1;
+  ClickState get clickState => _clickState;
+
+  void click() {
+    int now = DateTime.now().millisecondsSinceEpoch;
+    _timeout?.cancel();
+
+    switch (_clickState) {
+      case ClickState.initial:
+      case ClickState.done:
+        _intervals.clear();
+        _lastClick = now;
+        _clickState = ClickState.counting;
+      case ClickState.firstClick:
+      case ClickState.counting:
+        _clickState = ClickState.counting;
+        int delta = now - _lastClick;
+        _lastClick = now;
+        _intervals.add(delta);
+        if (_intervals.length > 10) {
+          _intervals.removeAt(0);
+        }
+    }
+
+    _timeout = Timer(const Duration(milliseconds: _maxWait), onTimeout);
+
     notifyListeners();
+  }
+
+  void onTimeout() {
+    log('Entering Timeout: $_clickState');
+    switch (_clickState) {
+      case ClickState.initial:
+      case ClickState.firstClick:
+        _clickState = ClickState.initial;
+        _intervals.clear();
+        _lastClick = 0;
+      case ClickState.counting:
+      case ClickState.done:
+        _clickState = ClickState.done;
+    }
+    notifyListeners();
+  }
+
+  // Clicks per minute
+  double get _cpm {
+    if (_intervals.isEmpty) {
+      return 0;
+    }
+    var avg = _intervals.reduce((a, b) => a + b) / _intervals.length;
+    return (60 * 1000) / avg;
+  }
+
+  double get bpm {
+    switch (_method) {
+      case CountMethod.beat:
+        return _cpm;
+      case CountMethod.measure:
+        return _cpm * _meter.index;
+    }
+  }
+
+  double get mpm {
+    switch (_method) {
+      case CountMethod.beat:
+        return _cpm / _meter.index;
+      case CountMethod.measure:
+        return _cpm;
+    }
+  }
+
+  String get clickLabel {
+    switch (_clickState) {
+      case ClickState.initial:
+      case ClickState.done:
+        switch (_method) {
+          case CountMethod.beat:
+            return 'Click on each beat';
+          default:
+            return 'Click on downbeat of ${_meter.index}/4 measure';
+        }
+      case ClickState.firstClick:
+      case ClickState.counting:
+        return 'Again';
+    }
   }
 }
 
@@ -98,72 +187,45 @@ class MyHomePage extends StatelessWidget {
         // Center is a layout widget. It takes a single child and positions it
         // in the middle of the parent.
         child: Column(
-          // Column is also a layout widget. It takes a list of children and
-          // arranges them vertically. By default, it sizes itself to fit its
-          // children horizontally, and tries to be as tall as its parent.
-          //
-          // Column has various properties to control how it sizes itself and
-          // how it positions its children. Here we use mainAxisAlignment to
-          // center the children vertically; the main axis here is the vertical
-          // axis because Columns are vertical (the cross axis would be
-          // horizontal).
-          //
-          // TRY THIS: Invoke "debug painting" (choose the "Toggle Debug Paint"
-          // action in the IDE, or press "p" in the console), to see the
-          // wireframe for each widget.
           mainAxisAlignment: MainAxisAlignment.center,
           children: <Widget>[
-            const Spacer(flex: 1),
-            const Row(children: <Widget>[
-              Spacer(flex: 20),
-              MeterChooser(),
-              Spacer(flex: 20),
-              MethodChooser(),
-              Spacer(flex: 20)
-            ]),
-            const Spacer(flex: 1),
+            const Spacer(flex: 2),
             ElevatedButton(
               onPressed: () {
-                var state = context.read<AppState>();
-                log('Pressing embedded action');
-                state.increment();
+                var state = context.read<Counter>();
+                state.click();
               },
-              child: const Text('Click Here'),
+              child: Consumer<Counter>(
+                  builder: (context, state, child) => Text(state.clickLabel)),
             ),
             const Spacer(flex: 1),
-            const Text(
-              'You have pushed the button this many times:',
-            ),
-            Consumer<AppState>(
+            Consumer<Counter>(
                 builder: (context, state, child) => Text(
-                      '${state.value} - ${state.meter} - ${state.method}',
-                      style: Theme.of(context).textTheme.headlineMedium,
-                    )),
+                    "${state.mpm.toStringAsFixed(1)} mpm ${state.meter.index}/4")),
+            const Spacer(flex: 1),
+            Consumer<Counter>(
+                builder: (context, state, child) =>
+                    Text("${state.bpm.toStringAsFixed(1)} bpm")),
+            const Spacer(flex: 2),
+            const MeterChooser(),
+            const Spacer(flex: 1),
+            const MethodChooser(),
             const Spacer(flex: 1),
           ],
         ),
       ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () {
-          var state = context.read<AppState>();
-          log('Pressing floating action');
-          state.increment();
-        },
-        tooltip: 'Increment',
-        child: const Icon(Icons.add),
-      ), // This trailing comma makes auto-formatting nicer for build methods.
     );
   }
 }
 
-enum Meter { beat, double, waltz, common }
+enum Meter { none, beat, double, waltz, common }
 
 class MeterChooser extends StatelessWidget {
   const MeterChooser({super.key});
 
   @override
   Widget build(BuildContext context) {
-    return Consumer<AppState>(
+    return Consumer<Counter>(
         builder: (context, state, child) => SegmentedButton<Meter>(
                 segments: const <ButtonSegment<Meter>>[
                   ButtonSegment<Meter>(value: Meter.beat, label: Text('beat')),
@@ -175,7 +237,7 @@ class MeterChooser extends StatelessWidget {
                   state.meter
                 },
                 onSelectionChanged: (Set<Meter> newSelection) {
-                  var state = context.read<AppState>();
+                  var state = context.read<Counter>();
                   state.meter = newSelection.first;
                 }));
   }
@@ -188,19 +250,20 @@ class MethodChooser extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Consumer<AppState>(
+    return Consumer<Counter>(
         builder: (context, state, child) => SegmentedButton<CountMethod>(
                 segments: const <ButtonSegment<CountMethod>>[
                   ButtonSegment<CountMethod>(
-                      value: CountMethod.beat, label: Text('beat')),
+                      value: CountMethod.beat, label: Text('Count Beats')),
                   ButtonSegment<CountMethod>(
-                      value: CountMethod.measure, label: Text('measure')),
+                      value: CountMethod.measure,
+                      label: Text('Count Measures')),
                 ],
                 selected: <CountMethod>{
                   state.method
                 },
                 onSelectionChanged: (Set<CountMethod> newSelection) {
-                  var state = context.read<AppState>();
+                  var state = context.read<Counter>();
                   state.method = newSelection.first;
                 }));
   }
