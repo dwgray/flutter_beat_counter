@@ -145,14 +145,6 @@ class MyHomePage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    log('${state.method}');
-    var mpm = state.method == CountMethod.measure
-        ? <Widget>[
-            Text("${state.mpm.toStringAsFixed(1)} mpm ${state.meter.index}/4"),
-            const Spacer(flex: 1),
-          ]
-        : [];
-
     var elements = <Widget>[
       const SizedBox(height: 20),
       SizedBox(
@@ -167,7 +159,9 @@ class MyHomePage extends StatelessWidget {
                 child: Text(state.clickLabel),
               ))),
       const Spacer(flex: 1),
-      ...mpm,
+      if (state.method == CountMethod.measure)
+        Text("${state.mpm.toStringAsFixed(1)} mpm ${state.meter.index}/4"),
+      if (state.method == CountMethod.measure) const SizedBox(height: 10),
       Text("${state.bpm.toStringAsFixed(1)} bpm"),
       const Spacer(flex: 2),
       const MeterChooser(),
