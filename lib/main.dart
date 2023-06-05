@@ -128,7 +128,7 @@ class MyApp extends StatelessWidget {
     return MaterialApp(
       title: 'Beat Counter',
       theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepOrange),
+        colorScheme: ColorScheme.fromSeed(seedColor: Colors.blue),
         useMaterial3: true,
       ),
       home: Consumer<Counter>(
@@ -154,19 +154,24 @@ class MyHomePage extends StatelessWidget {
         : [];
 
     var elements = <Widget>[
-      const Spacer(flex: 2),
-      ElevatedButton(
-        onPressed: () {
-          state.click();
-        },
-        child: Text(state.clickLabel),
-      ),
+      const SizedBox(height: 20),
+      SizedBox(
+          width: double.infinity,
+          height: 60,
+          child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: ElevatedButton(
+                onPressed: () {
+                  state.click();
+                },
+                child: Text(state.clickLabel),
+              ))),
       const Spacer(flex: 1),
       ...mpm,
       Text("${state.bpm.toStringAsFixed(1)} bpm"),
       const Spacer(flex: 2),
       const MeterChooser(),
-      const Spacer(flex: 1),
+      const SizedBox(height: 10),
       const MethodChooser(),
       const Spacer(flex: 1),
     ];
