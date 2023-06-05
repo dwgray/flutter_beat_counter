@@ -1,8 +1,6 @@
 import 'dart:async';
-
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'dart:developer';
 
 void main() {
   runApp(ChangeNotifierProvider(
@@ -147,22 +145,13 @@ class MyHomePage extends StatelessWidget {
   Widget build(BuildContext context) {
     var elements = <Widget>[
       const SizedBox(height: 20),
-      SizedBox(
-          width: double.infinity,
-          height: 60,
-          child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: ElevatedButton(
-                onPressed: () {
-                  state.click();
-                },
-                child: Text(state.clickLabel),
-              ))),
-      const Spacer(flex: 1),
+      CounterButton(state: state),
+      const SizedBox(height: 20),
       if (state.method == CountMethod.measure)
-        Text("${state.mpm.toStringAsFixed(1)} mpm ${state.meter.index}/4"),
+        TempoCard(
+            text: "${state.mpm.toStringAsFixed(1)} mpm ${state.meter.index}/4"),
       if (state.method == CountMethod.measure) const SizedBox(height: 10),
-      Text("${state.bpm.toStringAsFixed(1)} bpm"),
+      TempoCard(text: "${state.bpm.toStringAsFixed(1)} bpm"),
       const Spacer(flex: 2),
       const MeterChooser(),
       const SizedBox(height: 10),
@@ -179,6 +168,61 @@ class MyHomePage extends StatelessWidget {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: elements,
+        ),
+      ),
+    );
+  }
+}
+
+class CounterButton extends StatelessWidget {
+  const CounterButton({
+    super.key,
+    required this.state,
+  });
+
+  final Counter state;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final style =
+        theme.textTheme.displayMedium!.copyWith(fontWeight: FontWeight.bold);
+
+    return SizedBox(
+        width: double.infinity,
+        height: 250,
+        child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: ElevatedButton(
+              onPressed: () {
+                state.click();
+              },
+              child: Text(state.clickLabel,
+                  textAlign: TextAlign.center, style: style),
+            )));
+  }
+}
+
+class TempoCard extends StatelessWidget {
+  const TempoCard({
+    super.key,
+    required this.text,
+  });
+
+  final String text;
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final style = theme.textTheme.displayMedium!.copyWith(
+        color: theme.colorScheme.onPrimary, fontWeight: FontWeight.bold);
+
+    return SizedBox(
+      width: double.infinity,
+      child: Card(
+        color: theme.colorScheme.primary,
+        child: Padding(
+          padding: const EdgeInsets.all(24.0),
+          child: Text(text, textAlign: TextAlign.center, style: style),
         ),
       ),
     );
