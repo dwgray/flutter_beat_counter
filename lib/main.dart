@@ -2,6 +2,8 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+// TODONEXT:  Add back in the "beat" option and contain things appropriately - this
+//  will let us remove the constraint on showing the BPM card for any value of measure not beat
 void main() {
   runApp(ChangeNotifierProvider(
       create: (context) => Counter(), child: const MyApp()));
@@ -25,7 +27,10 @@ class Counter with ChangeNotifier {
     notifyListeners();
   }
 
-  CountMethod get method => _method;
+  CountMethod get method {
+    return _meter == Meter.beat ? CountMethod.beat : _method;
+  }
+
   set method(CountMethod value) {
     _method = value;
     notifyListeners();
@@ -104,7 +109,7 @@ class Counter with ChangeNotifier {
     switch (_clickState) {
       case ClickState.initial:
       case ClickState.done:
-        switch (_method) {
+        switch (method) {
           case CountMethod.beat:
             return 'Click on each beat';
           default:
@@ -147,15 +152,15 @@ class MyHomePage extends StatelessWidget {
       const SizedBox(height: 20),
       CounterButton(state: state),
       const SizedBox(height: 20),
-      if (state.method == CountMethod.measure)
+      if (state.meter != Meter.beat)
         TempoCard(
             text: "${state.mpm.toStringAsFixed(1)} mpm ${state.meter.index}/4"),
-      if (state.method == CountMethod.measure) const SizedBox(height: 10),
+      if (state.meter != Meter.beat) const SizedBox(height: 10),
       TempoCard(text: "${state.bpm.toStringAsFixed(1)} bpm"),
       const Spacer(flex: 2),
       const MeterChooser(),
       const SizedBox(height: 10),
-      const MethodChooser(),
+      if (state.meter != Meter.beat) const MethodChooser(),
       const Spacer(flex: 1),
     ];
 
@@ -186,11 +191,11 @@ class CounterButton extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final style =
-        theme.textTheme.displayMedium!.copyWith(fontWeight: FontWeight.bold);
+        theme.textTheme.headlineLarge!.copyWith(fontWeight: FontWeight.bold);
 
     return SizedBox(
         width: double.infinity,
-        height: 250,
+        height: 160,
         child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16),
             child: ElevatedButton(
@@ -213,7 +218,7 @@ class TempoCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final style = theme.textTheme.displayMedium!.copyWith(
+    final style = theme.textTheme.headlineLarge!.copyWith(
         color: theme.colorScheme.onPrimary, fontWeight: FontWeight.bold);
 
     return SizedBox(
@@ -239,6 +244,7 @@ class MeterChooser extends StatelessWidget {
     return Consumer<Counter>(
         builder: (context, state, child) => SegmentedButton<Meter>(
                 segments: const <ButtonSegment<Meter>>[
+                  ButtonSegment<Meter>(value: Meter.beat, label: Text('beat')),
                   ButtonSegment<Meter>(value: Meter.double, label: Text('2/4')),
                   ButtonSegment<Meter>(value: Meter.waltz, label: Text('3/4')),
                   ButtonSegment<Meter>(value: Meter.common, label: Text('4/4')),
