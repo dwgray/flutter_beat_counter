@@ -2,8 +2,6 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
-// TODONEXT:  Add back in the "beat" option and contain things appropriately - this
-//  will let us remove the constraint on showing the BPM card for any value of measure not beat
 void main() {
   runApp(ChangeNotifierProvider(
       create: (context) => Counter(), child: const MyApp()));
@@ -11,18 +9,42 @@ void main() {
 
 enum ClickState { initial, firstClick, counting, done }
 
+/* I'm managing state and handling "business logic" such as it is in a single class - this won't scale beyond
+ a fairly simple application, but seems like a reasonably clean solution for this very small application 
+
+  I'm making heavy use of custom setters and getters to supply a public interface on top of private state.
+
+  The public interface is as follows:
+
+  The internal state for the application is as follows
+    - User setabble options
+      - _method - Does the user want to count by beats of by measures
+      - _meter - beat (no meter), 2/4 (double), 3/4 (waltz) or 4/4 (common)
+    - Internal state 
+      -  _clickState - This is a simple state machine to track whether the user has started counting, etc.
+          this is used to manage the rest of the internal state and helps when compute the title of the click button 
+      -  observe this state to render 
+      - _lastClick - Timestamp of the last click
+      - _intervals - the last 10 intervals between click s in ticks (which may be rescaled based on meter/method)
+      - _cpm - counts per minute computed from _intervals
+ */
 class Counter with ChangeNotifier {
   static const int _maxWait = 5000;
 
-  int _lastClick = 0;
   Meter _meter = Meter.common;
   CountMethod _method = CountMethod.measure;
+
   ClickState _clickState = ClickState.initial;
+  int _lastClick = 0;
   final List<int> _intervals = [];
   Timer? _timeout;
 
   Meter get meter => _meter;
   set meter(Meter value) {
+    if (_method == CountMethod.measure) {
+      _convertIntervals(_meter, value);
+    }
+
     _meter = value;
     notifyListeners();
   }
@@ -32,11 +54,23 @@ class Counter with ChangeNotifier {
   }
 
   set method(CountMethod value) {
+    switch (value) {
+      case CountMethod.beat:
+        _convertIntervals(_meter, Meter.beat);
+      case CountMethod.measure:
+        _convertIntervals(Meter.beat, _meter);
+    }
     _method = value;
     notifyListeners();
   }
 
-  ClickState get clickState => _clickState;
+  // Convert intervals to the new meter, keeping bmp constant
+  void _convertIntervals(Meter oldMeter, Meter newMeter) {
+    for (var i = 0; i < _intervals.length; i++) {
+      var beat = _intervals[i] ~/ oldMeter.index;
+      _intervals[i] = beat * newMeter.index;
+    }
+  }
 
   void click() {
     int now = DateTime.now().millisecondsSinceEpoch;
@@ -59,12 +93,12 @@ class Counter with ChangeNotifier {
         }
     }
 
-    _timeout = Timer(const Duration(milliseconds: _maxWait), onTimeout);
+    _timeout = Timer(const Duration(milliseconds: _maxWait), _onTimeout);
 
     notifyListeners();
   }
 
-  void onTimeout() {
+  void _onTimeout() {
     switch (_clickState) {
       case ClickState.initial:
       case ClickState.firstClick:
@@ -78,7 +112,7 @@ class Counter with ChangeNotifier {
     notifyListeners();
   }
 
-  // Clicks per minute
+  // Clicks per minute - computed from the last ten intevals between clicks
   double get _cpm {
     if (_intervals.isEmpty) {
       return 0;
@@ -124,8 +158,6 @@ class Counter with ChangeNotifier {
 
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
-
-  // This widget is the root of your application.
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
@@ -141,6 +173,18 @@ class MyApp extends StatelessWidget {
   }
 }
 
+/// The main (and currently only) page is a simple column layout - this started a simple
+///   column layout, but in order to have the fallback of going scrollable when the vertical
+///   dimension is too small (e.g. landscape or extra-small device) I moved to a LayoutBuilder
+///   containing a SingleChildScrollView - this method is well documented in the Widget's page
+///   https://api.flutter.dev/flutter/widgets/SingleChildScrollView-class.html
+///
+///   Note the use of Collection conditionals to hide the MPM card when the user has
+///   selected "beat mode."
+///
+///   I'm passing my application state into the wizrd.  General guidance is to grab state at the
+///   lowest point in the tree possible to prevent the system from building too much of the tree.
+///   Since I am hiding an element of the column, this full widget needs to know the state.
 class MyHomePage extends StatelessWidget {
   const MyHomePage({super.key, required this.title, required this.state});
   final String title;
@@ -148,37 +192,48 @@ class MyHomePage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    var elements = <Widget>[
-      const SizedBox(height: 20),
-      CounterButton(state: state),
-      const SizedBox(height: 20),
-      if (state.meter != Meter.beat)
-        TempoCard(
-            text: "${state.mpm.toStringAsFixed(1)} mpm ${state.meter.index}/4"),
-      if (state.meter != Meter.beat) const SizedBox(height: 10),
-      TempoCard(text: "${state.bpm.toStringAsFixed(1)} bpm"),
-      const Spacer(flex: 2),
-      const MeterChooser(),
-      const SizedBox(height: 10),
-      if (state.meter != Meter.beat) const MethodChooser(),
-      const Spacer(flex: 1),
-    ];
-
     return Scaffold(
       appBar: AppBar(
         backgroundColor: Theme.of(context).colorScheme.inversePrimary,
         title: Center(child: Text(title)),
       ),
-      body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: elements,
-        ),
-      ),
+      body: LayoutBuilder(
+          builder: (BuildContext context, BoxConstraints viewportConstraints) {
+        return SingleChildScrollView(
+          child: Center(
+            child: ConstrainedBox(
+              constraints:
+                  BoxConstraints(minHeight: viewportConstraints.maxHeight),
+              child: IntrinsicHeight(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: <Widget>[
+                    const SizedBox(height: 20),
+                    CounterButton(state: state),
+                    const SizedBox(height: 20),
+                    if (state.meter != Meter.beat)
+                      TempoCard(
+                          text:
+                              "${state.mpm.toStringAsFixed(1)} mpm ${state.meter.index}/4"),
+                    if (state.meter != Meter.beat) const SizedBox(height: 10),
+                    TempoCard(text: "${state.bpm.toStringAsFixed(1)} bpm"),
+                    const Spacer(flex: 2),
+                    const MeterChooser(),
+                    const SizedBox(height: 10),
+                    if (state.meter != Meter.beat) const MethodChooser(),
+                    const Spacer(flex: 1),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        );
+      }),
     );
   }
 }
 
+/// A smart button that uses state to track its clicks and define its label
 class CounterButton extends StatelessWidget {
   const CounterButton({
     super.key,
@@ -208,6 +263,8 @@ class CounterButton extends StatelessWidget {
   }
 }
 
+/// A generic tempo card that takes a string to display on a card.  This provides
+///  the styling for those cards
 class TempoCard extends StatelessWidget {
   const TempoCard({
     super.key,
@@ -234,8 +291,17 @@ class TempoCard extends StatelessWidget {
   }
 }
 
+/// Defines the possible meters - this was a bit of a stretch, since I was looking for
+/// single word synonyms for 2/4, 3/4 and 4/4.  "none" is included to make the rest of the
+/// values indices line up with their beats per measure.  "beat" isn't really a meter, but
+/// an indiciation that the user just wants to count beats and not worry about meter
 enum Meter { none, beat, double, waltz, common }
 
+/// A simple segmented button (semantically a radio group) to choose the meter.  I originally
+/// implemented this as a StatefulWidget, but found it cleaner for this small application
+/// to manage application state centrally - so clicking on these buttons calls a method
+/// on the state and then through the magic of reactivity, the control reflects the change
+/// in the application state that results
 class MeterChooser extends StatelessWidget {
   const MeterChooser({super.key});
 
@@ -259,6 +325,7 @@ class MeterChooser extends StatelessWidget {
   }
 }
 
+/// Simple enum to define whether the user wants to click once per beat or once per measure
 enum CountMethod { beat, measure }
 
 class MethodChooser extends StatelessWidget {
