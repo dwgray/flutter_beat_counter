@@ -7,27 +7,31 @@ void main() {
       create: (context) => Counter(), child: const MyApp()));
 }
 
+/// The states for the core state machine
+///  - initial = no data (initial state or timer reset without getting past firstClick state)
+///  - firstClick = the user has clicked once after inital/done state
+///  - counting = second - infinite continuous clicking without ever pausing for _maxTime
+///  - done = user has paused for _maxtime after clicking at least twice
 enum ClickState { initial, firstClick, counting, done }
 
-/* I'm managing state and handling "business logic" such as it is in a single class - this won't scale beyond
- a fairly simple application, but seems like a reasonably clean solution for this very small application 
-
-  I'm making heavy use of custom setters and getters to supply a public interface on top of private state.
-
-  The public interface is as follows:
-
-  The internal state for the application is as follows
-    - User setabble options
-      - _method - Does the user want to count by beats of by measures
-      - _meter - beat (no meter), 2/4 (double), 3/4 (waltz) or 4/4 (common)
-    - Internal state 
-      -  _clickState - This is a simple state machine to track whether the user has started counting, etc.
-          this is used to manage the rest of the internal state and helps when compute the title of the click button 
-      -  observe this state to render 
-      - _lastClick - Timestamp of the last click
-      - _intervals - the last 10 intervals between click s in ticks (which may be rescaled based on meter/method)
-      - _cpm - counts per minute computed from _intervals
- */
+/// I'm managing state and handling "business logic" such as it is in a single class - this won't scale beyond
+/// a fairly simple application, but seems like a reasonably clean solution for this very small application
+///
+///  I'm making heavy use of custom setters and getters to supply a public interface on top of private state.
+///
+///  The public interface is documented inline
+///
+///  The internal state for the application is as follows
+///    - User setabble options
+///      - _method - Does the user want to count by beats of by measures
+///      - _meter - beat (no meter), 2/4 (double), 3/4 (waltz) or 4/4 (common)
+///    - Internal state
+///      -  _clickState - This is a simple state machine to track whether the user has started counting, etc.
+///          this is used to manage the rest of the internal state and helps when compute the title of the click button
+///      - _lastClick - Timestamp of the last click
+///      - _intervals - the last 10 intervals between click s in ticks (which may be rescaled based on meter/method)
+///      - _cpm - counts per minute computed from _intervals
+///
 class Counter with ChangeNotifier {
   static const int _maxWait = 5000;
 
@@ -39,6 +43,8 @@ class Counter with ChangeNotifier {
   final List<int> _intervals = [];
   Timer? _timeout;
 
+  /// The current meter - changing the meter will udpate the internal state to keep
+  /// BPM constant
   Meter get meter => _meter;
   set meter(Meter value) {
     if (_method == CountMethod.measure) {
@@ -49,6 +55,8 @@ class Counter with ChangeNotifier {
     notifyListeners();
   }
 
+  ///  Count by Beats or Measures - changing this will update the internal state to keep
+  ///   BPM constant
   CountMethod get method {
     return _meter == Meter.beat ? CountMethod.beat : _method;
   }
@@ -72,6 +80,8 @@ class Counter with ChangeNotifier {
     }
   }
 
+  /// Handle the click event on the counting button - this updates the click state to manage
+  /// the core internal state machine an resets the timeout
   void click() {
     int now = DateTime.now().millisecondsSinceEpoch;
     _timeout?.cancel();
@@ -98,6 +108,8 @@ class Counter with ChangeNotifier {
     notifyListeners();
   }
 
+  // Timeout handler that sets the state to done or initial once the user has stopped clicking
+  // for _maxWait milliseconds
   void _onTimeout() {
     switch (_clickState) {
       case ClickState.initial:
@@ -121,6 +133,7 @@ class Counter with ChangeNotifier {
     return (60 * 1000) / avg;
   }
 
+  /// Beats per minute calculated for clicks per minute and meter
   double get bpm {
     switch (_method) {
       case CountMethod.beat:
@@ -130,6 +143,7 @@ class Counter with ChangeNotifier {
     }
   }
 
+  ///  Measures per minute calculated from clicks per minute and meter
   double get mpm {
     switch (_method) {
       case CountMethod.beat:
@@ -139,6 +153,7 @@ class Counter with ChangeNotifier {
     }
   }
 
+  /// The label to show on the main button, reactive based on changes of state
   String get clickLabel {
     switch (_clickState) {
       case ClickState.initial:
@@ -156,6 +171,7 @@ class Counter with ChangeNotifier {
   }
 }
 
+/// The widget representing the application
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
   @override
@@ -173,10 +189,10 @@ class MyApp extends StatelessWidget {
   }
 }
 
-/// The main (and currently only) page is a simple column layout - this started a simple
-///   column layout, but in order to have the fallback of going scrollable when the vertical
-///   dimension is too small (e.g. landscape or extra-small device) I moved to a LayoutBuilder
-///   containing a SingleChildScrollView - this method is well documented in the Widget's page
+/// The main (and currently only) page started as simple column layout, but in order to have the
+///   fallback of going scrollable when the vertical dimension is too small (e.g. landscape or
+///   extra-small device) I moved to a LayoutBuilder containing a SingleChildScrollView - this
+///   method is well documented in the Widget's page
 ///   https://api.flutter.dev/flutter/widgets/SingleChildScrollView-class.html
 ///
 ///   Note the use of Collection conditionals to hide the MPM card when the user has
