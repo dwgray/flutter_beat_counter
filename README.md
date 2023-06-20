@@ -1,16 +1,12 @@
 # flutter_beat_counter
 
-A new Flutter project.
+A simple beat counter written in flutter
 
-## Getting Started
+This is a simple application that lets you tap out the beat of a song and find the
+tempo in Beats per minute and Measures per minute. There are a couple of very simple
+settings to change how you count (by measure or beat) and to specify the meter.
 
-This project is a starting point for a Flutter application.
+## The project
 
-A few resources to get you started if this is your first Flutter project:
-
-- [Lab: Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Cookbook: Useful Flutter samples](https://docs.flutter.dev/cookbook)
-
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+This is part of a larger project to compare and contrast multi-platform toolsets, when I've
+made more progress I'll link the different versions and the blog here.
