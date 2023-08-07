@@ -1,0 +1,6 @@
+# Remove the target-specific generated code from github's linguist stats
+android/** linguist-generated
+ios/** linguist-generated
+linux/** linguist-generated
+web/** linguist-generated
+windows/** linguist-generated
