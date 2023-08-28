@@ -14,8 +14,8 @@ I've heavily documented the code I wrote, which is contained in [lib/main.dart](
 
 Screenshots of the application on several platforms are in the [screenshots](screenshots) folder
 
-I am documenting this project in a series of [medium.com](https://medium.com) posts.  The first post in the series "[Which Multi-platform framework should I use to write my app?](https://medium.com/@dwgray/which-multi-platform-framework-should-i-use-to-write-my-app-f1afbf330493)" gives more context about the project and describes how the app should behave.
+I am documenting this project in a series of [medium.com](https://medium.com) posts.  The first post in the series "[Which Multi-platform framework should I use to write my app?](https://medium.com/@dwgray/which-multi-platform-framework-should-i-use-to-write-my-app-f1afbf330493)" gives more context about the project and describes how the app should behave. The post that covers the Flutter implementation of the app is [Which Multi-platform framework should I use to write my app? Let’s try Flutter.](https://medium.com/@dwgray/which-multi-platform-framework-should-i-use-to-write-my-app-lets-try-flutter-2c39dedd3cd3)
 
 You can run a version of the app in [DartPad](https://dartpad.dev) at this link [https://dartpad.dev/0fb90b38b75e71d8cfabd059c9a0aaab?]() (you need to click run in the upper right of the code window to see the app running).
 
-
+If you find this helpful, please consider [following me](https://medium.com/@dwgray) on Medium.
